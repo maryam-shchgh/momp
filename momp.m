@@ -7,7 +7,7 @@ function [momp_out, mp_out] = momp(T, m, verbose)
     end
     
     %% downsamping the T and m
-    dsr = 4;
+    dsr = 8;
     Tds = paa(T, floor(length(T)/dsr));
     mds = floor(m/dsr);
     
@@ -66,12 +66,13 @@ end
 function filteredIdx = filterIndices(amp, absf, bsf, m)
 
     firstCandidates = find(amp >= absf & amp <= bsf);
-    filteredIdx = [];
-    
-    for ii = 1:length(firstCandidates)
-        first = max(1, firstCandidates(ii) - m);
-        last = min(firstCandidates(ii) + m, length(amp));
-        filteredIdx(end:end+last-first + 1) = [filteredIdx, first:last];
-    end
+    filteredIdx = firstCandidates;
+%     filteredIdx = [];
+%     
+%     for ii = 1:length(firstCandidates)
+%         first = max(1, firstCandidates(ii) - m);
+%         last = min(firstCandidates(ii) + m, length(amp));
+%         filteredIdx(end:end+last-first + 1) = [filteredIdx, first:last];
+%     end
 
 end

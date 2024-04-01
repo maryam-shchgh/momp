@@ -2,18 +2,22 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import zscore
 import numpy as np
+import os
 
 
-def plotResult(ts, w, mp, amp, dsr, absf, bsf):
+def plotResult(ts, w, mp, amp, absf, bsf, dd):
+    figpath = './fig/'
+    if not(os.path.exists(figpath)):
+        os.makedirs(figpath)
+
     fig = plt.figure(num = 1, figsize=(4, 3))
     axs = fig.subplots(2, 1, sharex=True)
-    fig.suptitle('DSR: {}'.format(dsr))
     ts = zscore(ts)
-    axs[0].plot(ts)
-    axs[1].plot(mp, label='MP', linewidth = 1, color = 'b')
-    axs[1].plot(amp, label='AMP', linewidth = 1, color ='g')
-    axs[1].axhline(y=absf, color='r', linewidth = 1)
-    axs[1].axhline(y=bsf, color='g', linewidth = 1)
+    axs[0].plot(ts, linewidth = 0.5)
+    axs[1].plot(mp, label='MP', linewidth = 0.5, color = 'b')
+    axs[1].plot(amp, label='AMP', linewidth = 0.5, color ='g')
+    axs[1].axhline(y=absf, color='r', linewidth = 0.5)
+    axs[1].axhline(y=bsf, color='g', linewidth = 0.5)
     axs[1].set_xlabel('n')
 
 
@@ -32,6 +36,7 @@ def plotResult(ts, w, mp, amp, dsr, absf, bsf):
 
     plt.tight_layout()
     plt.rcParams.update({'font.size': 4})
-    fig.savefig('aMP_n_{}_w_{}_dsr_{}.svg'.format(len(ts), w, dsr))
+    fig.savefig(os.path.join(figpath, \
+                'aMP_n_{}_w_{}_startdsr_{}.svg'.format(len(ts), w, dd)))
     plt.show()
     

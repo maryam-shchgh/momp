@@ -9,45 +9,43 @@ import mass_ts as mts
 from plotAMP import plotResult
 # from scipy.stats import zscore
 # from decimal import Decimal, getcontext
-import pyscamp as scamp
-import os
+# import pyscamp as scamp
+# import os
 from genData import genData
 from momp_utils import approxMP
 from momp_utils import bsfMotif
 from momp_utils import prune
 from momp_utils import exactLocalSearch
+import warnings
 
 %matplotlib widget
 
 
 def momp(T, m, dd):
 
-    momp_out, amp, absf, bsf, _, _ = process(T, m, dd, np.arange(len(T)))
+    bsf = np.inf
+    momp_out, amp, absf, bsf, _ = process(T, m, dd, np.arange(len(T)), bsf)
 
     return momp_out, amp, absf, bsf
 
-def process(T, m, dd, idxList):
+def process(T, m, dd, idxList, bsf):
 
     # idxList : original indices for the input data points
-
     amp, _ , _ , _ = approxMP(T, m, dsr = dd)
-    
-    absf, absf_loc, _ = bsfMotif(amp, m)
+    absf, original_bsf_loc= bsfMotif(amp, m)
+    bsf,momp_out, original_bsf = exactLocalSearch(T,m, dd, original_bsf_loc, bsf, idxList)
+    pruned_ts , idxList, prunning_perc = prune(T, m, absf, bsf, amp, idxList, n_orig)
 
-    bsf, _ = exactLocalSearch(T,m, dd, absf_loc)
-    
-    pruned_ts , idxList, prunning_perc = prune(T, absf, bsf, amp, idxList, n_orig)
-    pruned_MP = mpx.compute(pruned_ts,m)['mp']
-    _ , min_loc, _ = bsfMotif(pruned_MP, m)
-    momp_out = [idxList[i] for i in min_loc]
+    print('MOMP: Tpaa1in{} |BSFdist : {} |Loc: {} |'\
+          'OriginBSFdist: {} |OriginBSFloc: {} |PrunePerc: {}'\
+            .format(dd, round(bsf,2), momp_out,\
+                round(original_bsf,2), original_bsf_loc,\
+                                        round(prunning_perc,4)))
 
-    print('MOMP: Tpaa1in{} | BSF distance : {} | Loc: [{}, {}] | Prunning Perc: {}%'\
-          .format(dd, round(bsf,2), momp_out[0], momp_out[1], round(prunning_perc,4)))
+    if dd//2 >= 4:
+       momp_out, amp, absf, bsf, pruned_ts = process(pruned_ts, m, dd//2, idxList, bsf)
 
-    if dd//2 >= 2:
-       momp_out, amp, absf, bsf, pruned_ts, prunning_perc = process(pruned_ts, m, dd//2, idxList)
-
-    return momp_out, amp, absf, bsf, pruned_ts, prunning_perc
+    return momp_out, amp, absf, bsf, pruned_ts
 
 
 def findMaxPow2Sub(N):
@@ -68,16 +66,20 @@ def next_closest_multiple_greater(N, K):
 
 
 def main():
-    T , m_orig = genData() , 300
+
+    plt.close('all')
+
+    T , m_orig = genData() , 800
     global n_orig
     n_orig = len(T)
     m = findMaxPow2Sub(m_orig)
     dd = m // 4
+
     print('T length: {} | Requested motif length : {}'.format(n_orig, m_orig))
-    print('The largest power-of-two <  {} : {}.'.format(m_orig, m))
+    print('The largest power-of-two <  {} : {}'.format(m_orig, m))
     print('Starting downsampling rate (1/4 * {}):  {}'.format(m, m//4))
 
-    # padd T up to X the next multiple of dd
+    
     padded_length = next_closest_multiple_greater(n_orig, dd)
     padcount = padded_length - n_orig
     T = np.pad(T, (0, padcount), mode='constant', constant_values=0)
@@ -85,25 +87,22 @@ def main():
     #Evaluation of the result
     st = time.time()
     mp = mpx.compute(T,m)['mp']
-    _ , min_loc, _ = bsfMotif(mp, m)
-    mp_time = time.time() - st
+    _, min_loc = bsfMotif(mp, m)
+    mp_time = round(time.time() - st,2)
     print('MPx: {} | minval : {}'.format(min_loc, round(np.min(mp),2)))
-    # fig = plt.figure(num = 2, figsize=(4, 3))
-    # plt.plot(mp)
-    # fig.savefig(os.path.join('./fig/','mp.svg'))
 
     st = time.time()
-    momp_out, amp, absf, bsf = momp(T, m, dd)
-    end = time.time()
-    momp_time = end - st
+    _, amp, absf, bsf = momp(T, m, dd)
+    momp_time = round(time.time() - st,2)
 
-    print('Speedup : {}X'.format(round(mp_time / momp_time)))
+    print('Speedup : {}X | MPx:{}s | MOMP: {}s'.format(round(mp_time / momp_time), mp_time, momp_time))
     plotResult(T, m, mp, amp, absf, bsf, dd)
 
 
 if __name__=="__main__":
 
-    plt.close('all')
+    # Suppress the warning
+    warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
     main()
 
     

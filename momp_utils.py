@@ -31,7 +31,7 @@ def bsfMotif(mp):
     return min_val, min_locations
 
 
-def exactLocalSearch(ts, m, dsr, absf_loc, bsf, bsf_loc, idxList):
+def refine(ts, m, dsr, absf_loc, bsf, bsf_loc, idxList):
     offset = dsr - 1
     sub1 = ts[absf_loc[0] : min(absf_loc[0] + m, len(ts))]
     sub2 = ts[absf_loc[1] : min(absf_loc[1] + m, len(ts))]

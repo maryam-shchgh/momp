@@ -11,7 +11,7 @@ from genData import genData
 from momp_utils import approxMP
 from momp_utils import bsfMotif
 from momp_utils import prune
-from momp_utils import exactLocalSearch
+from momp_utils import refine
 import warnings
 from scipy.stats import zscore
 import os
@@ -47,7 +47,7 @@ def process(T, m, dd, idxList, bsf, bsf_loc):
     amp  = approxMP(T, m, dd)
     absf, absf_loc= bsfMotif(amp)
     if dd > 1:
-        bsf,bsf_loc, bsf_origin = exactLocalSearch(T,m, dd, absf_loc, bsf, bsf_loc, idxList)
+        bsf,bsf_loc, bsf_origin = refine(T,m, dd, absf_loc, bsf, bsf_loc, idxList)
         bsf_loc_origin = idxList[absf_loc]
         pruned_T , pruned_idxList = prune(T, m, absf, bsf, amp, idxList)
         return pruned_T, pruned_idxList, amp, absf, bsf, bsf_loc, bsf_origin, bsf_loc_origin

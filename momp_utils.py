@@ -1,10 +1,12 @@
 
-import time
 import numpy as np
 import matrixprofile as mpx
 from paa import paa
 import pandas as pd
+#For testing purposes
+import time 
 import matplotlib.pyplot as plt
+
 
 
 def approxMP(ts, m, dsr):
@@ -17,11 +19,16 @@ def approxMP(ts, m, dsr):
     else:
         return mpx.compute(ts,m)['mp']
 
+def bsfMotif(mp):
 
-def prune(T, m, absf, bsf, amp, idxList):
-    idx = findIndices(amp, m, absf, bsf, len(T))
-    pruned_ts, pruned_idxList = T[idx], idxList[idx]
-    return pruned_ts, pruned_idxList
+    min_val = np.min(mp)
+    min_indices = np.where(mp == min_val)[0]
+    min_locations = [min_indices[0]]
+    for ii in range(1, len(min_indices)):
+        if min_indices[ii] != min_indices[ii-1] + 1:
+            min_locations.append(min_indices[ii])
+
+    return min_val, min_locations
 
 
 def exactLocalSearch(ts, m, dsr, absf_loc, bsf, bsf_loc, idxList):
@@ -45,34 +52,33 @@ def exactLocalSearch(ts, m, dsr, absf_loc, bsf, bsf_loc, idxList):
                 bsf_loc = [idxList[ii], idxList[jj]]
 
     return bsf, bsf_loc, bsf_origin
-    
 
 
-def bsfMotif(mp):
-
-    min_val = np.min(mp)
-    min_indices = np.where(mp == min_val)[0]
-    min_locations = [min_indices[0]]
-    for ii in range(1, len(min_indices)):
-        if min_indices[ii] != min_indices[ii-1] + 1:
-            min_locations.append(min_indices[ii])
-
-    return min_val, min_locations
-
+def prune(T, m, absf, bsf, amp, idxList):
+    idx = findIndices(amp, m, absf, bsf, len(T))
+    pruned_ts, pruned_idxList = T[idx], idxList[idx]
+    return pruned_ts, pruned_idxList
 
 
 def findIndices(amp, m, absf, bsf, n):
 
     initset = np.where((amp >= absf) & (amp <= bsf))[0]
-    candidates = np.concatenate([np.arange(init, init + m) for init in initset])
-    candidates = np.sort(pd.unique(candidates))
-    candidates = candidates[candidates < n]
+    split_indices = np.where(np.diff(initset) != 1)[0] + 1
+    subarrays = np.split(initset, split_indices)
+
+    for ii in range(len(subarrays)):
+        lastitem = subarrays[ii][-1]
+        if ii < len(subarrays) - 1:
+            firstitem = subarrays[ii+1][0]
+        else:
+            firstitem = n
+        gap = firstitem  - lastitem
+        if gap < m:
+            subarrays[ii] = np.concatenate((subarrays[ii], np.arange(lastitem+1, lastitem + gap)))
+        else:
+            subarrays[ii] = np.concatenate((subarrays[ii], np.arange(lastitem+1, lastitem + m)))
+
+    candidates = np.concatenate(subarrays)
 
     return candidates
-
-
-
-
-
-
 

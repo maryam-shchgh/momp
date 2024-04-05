@@ -53,34 +53,43 @@ def momp(T, m , verbose = True):
     dd = m // 16
     bsf, bsf_loc = np.inf, None
     idxList = np.arange(len(T))
+    vis = 0
+    bfmp = mpx.compute(T,m)['mp']
+    _ , exact_loc = bsfMotif(bfmp)
 
 
     print('T length: {} | m: {} | starting dsr:{}'.format(len(T), m, dd))
     
     while dd:
 
+        # for ii in exact_loc:
+        #     if ii in idxList:
+        #         print('Paa1in{} PASSED > {} in idxList.'.format(dd,ii))
+        #     else:
+        #         print('Paa1in{} FAILED > {} NOT in idxList.'.format(dd,ii))
+
         # Locating absf val/ loc using uamp
         uamp = approxMP(T, m, dd)
+        # print('checking values of exact loc in uamp dd {}'.format(dd))
+        # for ii in exact_loc:
+        #     jj = np.where(idxList == ii)[0]
+        #     print('uamp value for exact loc {} : {}'.format(ii, uamp[jj-5:jj+5]))
+
         absf, absf_loc = bsfMotif(uamp)
         absf_loc_pruned_version = absf_loc
         absf_loc = idxList[absf_loc]
-        # print('absf loc: ', absf_loc)
-
-        print('current idxList start - end :', idxList[0],'-',idxList[-1], '| len : ', len(idxList))
-        toprint = [{x: uamp[np.where(idxList == x)[0]]} for x in idxList if ((x > 290 and x < 310) or (x > 990 and x < 1010))] 
-        print('Boundary loc: ',toprint)
-        if 300 in idxList and 1001 in idxList : print('both motifs are in the boundaries')
-        else:
-            print('boundary error')
+        # print('absf loc: ', absf_loc
 
         #plotting (sanity check)
-        fig1  = plt.figure(figsize=(4,3))
-        axs = fig1.subplots(2,1,sharex=True)
-        axs[0].plot(T)
-        for loc in absf_loc_pruned_version : axs[0].axvline(loc, color = 'r', label=  loc)
-        axs[1].plot(uamp)
-        axs[1].axhline(y=absf , color = 'r')
-        for loc in absf_loc_pruned_version : axs[1].axvline(loc, color = 'r', label = loc)
+        if vis:
+            fig1  = plt.figure(figsize=(4,3))
+            axs = fig1.subplots(2,1,sharex=True)
+            axs[0].plot(T)
+            # for loc in absf_loc_pruned_version : axs[0].axvline(loc, color = 'r', label=  loc)
+            axs[1].plot(uamp)
+            axs[1].axhline(y=absf , color = 'r')
+            for loc in absf_loc_pruned_version : axs[1].axvline(loc, color = 'r', label = loc)
+
         if dd == 1:
             print('MOMP : Tpaa1in{} | BSF: {} | localBSF: {} | BSF loc: {} | localBSF loc: {} | Pruning : {}%'.\
               format(dd, round(absf,2), round(absf,2), absf_loc, absf_loc, pruning))
@@ -91,19 +100,25 @@ def momp(T, m , verbose = True):
 
         #plotting (sanity check)
         # print('local bsf: {}, bsf: {}'.format(local_bsf, bsf))
-        for loc in bsf_loc : axs[0].axvline(loc, color = 'g', label=  loc)
-        axs[1].axhline(y=bsf , color = 'g')
-        for ax in axs:
-            ax.legend()
+
+        if vis:
+            for loc in bsf_loc : axs[0].axvline(loc, color = 'g', label=  loc)
+            axs[1].axhline(y=bsf , color = 'g')
+            for ax in axs:
+                ax.legend()
+
+        # print('Pruning boundaries: {} : {}'.format(absf, bsf))
 
         # Pruning
         pruned_T , pruned_idxList = prune(T, m, absf, bsf, uamp, idxList) 
         # print('remaining indices: ',pruned_idxList)
-        fig2  = plt.figure(figsize=(4,2))
-        axs = fig2.subplots(1,1,sharex=True)
-        # axs[0].plot(T)
-        axs.plot(pruned_T, color = 'r')
-        plt.show()
+
+        if vis:
+            fig2  = plt.figure(figsize=(4,2))
+            axs = fig2.subplots(1,1,sharex=True)
+            # axs[0].plot(T)
+            axs.plot(pruned_T, color = 'r')
+            plt.show()
 
         pruning = round(1 - len(pruned_T) / len(T_origin), 2)
 

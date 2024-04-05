@@ -55,7 +55,7 @@ def refine(ts, m, dsr, absf_loc, bsf, bsf_loc):
         for jj in range(loc2_st , loc2_end):
             sub2 = ts[jj : jj + m]
             # temp_bsf = round(np.linalg.norm(sub1-sub2),2)
-            temp_mp = mpx.compute(np.concatenate((sub1, sub2)),m)['mp']
+            temp_mp = mpx.compute(np.concatenate((sub1, np.random.rand(m//2), sub2)),m)['mp']
             temp_bsf , _ = bsfMotif(temp_mp)
             # temp_bsf = round(np.sqrt(np.sum((sub1-sub2)**2)), 2)
             # print('[{}:{}] and [{}:{}]  -> {}'.format(ii, ii+m, jj , jj +m, temp_bsf))
@@ -74,10 +74,11 @@ def prune(T, m, absf, bsf, amp, idxList):
 
 
 def findIndices(amp, m, absf, bsf, n):
-    print('amp in pruning: ', amp)
-    print('boundaries in pruning: ', absf, bsf)
+    # print('amp in pruning: ', amp)
     initset = np.where((amp >= absf) & (amp <= bsf))[0]
+    print(initset)
     split_indices = np.where(np.diff(initset) != 1)[0] + 1
+    print(split_indices)
     subarrays = np.split(initset, split_indices)
 
     for ii in range(len(subarrays)):

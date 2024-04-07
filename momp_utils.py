@@ -75,10 +75,11 @@ def prune(T, m, absf, bsf, amp, idxList):
 
 def findIndices(amp, m, absf, bsf, n):
     # print('amp in pruning: ', amp)
-    initset = np.where((amp >= absf) & (amp <= bsf))[0]
-    print(initset)
+    updated_bsf = min(bsf + (0.05 * max(amp)), max(amp))
+    initset = np.where((amp >= absf) & (amp <= updated_bsf))[0]
+    # print(initset)
     split_indices = np.where(np.diff(initset) != 1)[0] + 1
-    print(split_indices)
+    # print(split_indices)
     subarrays = np.split(initset, split_indices)
 
     for ii in range(len(subarrays)):

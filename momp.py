@@ -18,32 +18,6 @@ import warnings
 
 # %matplotlib widget
 
-# def momp(T, m, verbose = True):
-#     itertime = 0
-#     bsf, bsf_loc = np.inf, None
-#     idxList = np.arange(len(T))
-#     dd = m // 16
-#     while True:
-#         st = time.time()
-#         T_input = T
-#         T, idxList, amp, absf, bsf, bsf_loc, bsf_origin, bsf_loc_origin = \
-#             process(T_input, m, dd, idxList, bsf, bsf_loc)
-#         pruning_perc = round(1- (len(T) / n_orig), 3)
-#         end = time.time()
-#         itertime += (end - st)
-#         if dd == 1:
-#             return   round(itertime,2) 
-         
-#         if verbose:
-#             print('MOMP: Tpaa1in{} |BSFdist : {} |Loc: {} |'\
-#                 'OriginBSFdist: {} |OriginBSFloc: {} |PrunePerc: {} |Time: {}'\
-#                 .format(dd, bsf, bsf_loc, bsf_origin, bsf_loc_origin,\
-#                         pruning_perc, round(end - st,2)))
-#             # plotResult(T_input, m, mp, amp, absf, bsf, bsf_loc, bsf_loc_origin, dd)
-        
-#         dd = dd // 2
-#         break
-
 
 
 def momp(T, m , verbose = True):
@@ -53,7 +27,7 @@ def momp(T, m , verbose = True):
     dd = m // 16
     bsf, bsf_loc = np.inf, None
     idxList = np.arange(len(T))
-    vis = 0
+    vis = 1
     bfmp = mpx.compute(T,m)['mp']
     _ , exact_loc = bsfMotif(bfmp)
 
@@ -82,15 +56,19 @@ def momp(T, m , verbose = True):
 
         #plotting (sanity check)
         if vis:
-            fig1  = plt.figure(figsize=(4,3))
+            fig1  = plt.figure(figsize=(4,2))
             axs = fig1.subplots(2,1,sharex=True)
             axs[0].plot(T)
+            axs[0].set_title('Raw Input Time Series', fontsize = 12)
             # for loc in absf_loc_pruned_version : axs[0].axvline(loc, color = 'r', label=  loc)
             axs[1].plot(uamp)
             axs[1].axhline(y=absf , color = 'r')
+            axs[1].set_title('Upsampled Approximate MP', fontsize = 12)
             for loc in absf_loc_pruned_version : axs[1].axvline(loc, color = 'r', label = loc)
 
         if dd == 1:
+            plt.subplots_adjust(hspace=0.75)
+            plt.show()
             print('MOMP : Tpaa1in{} | BSF: {} | localBSF: {} | BSF loc: {} | localBSF loc: {} | Pruning : {}%'.\
               format(dd, round(absf,2), round(absf,2), absf_loc, absf_loc, pruning))
             return absf, absf_loc
@@ -107,6 +85,9 @@ def momp(T, m , verbose = True):
             for ax in axs:
                 ax.legend()
 
+            plt.subplots_adjust(hspace=0.75)
+            plt.show()
+
         # print('Pruning boundaries: {} : {}'.format(absf, bsf))
 
         # Pruning
@@ -118,6 +99,7 @@ def momp(T, m , verbose = True):
             axs = fig2.subplots(1,1,sharex=True)
             # axs[0].plot(T)
             axs.plot(pruned_T, color = 'r')
+            axs.set_title('Pruned Time Series', fontsize = 14)
             plt.show()
 
         pruning = round(1 - len(pruned_T) / len(T_origin), 2)
@@ -128,25 +110,6 @@ def momp(T, m , verbose = True):
         T, idxList = pruned_T, pruned_idxList
         dd = dd // 2
 
-        
-
-
-# def process(T, m, dd, idxList, bsf, bsf_loc):
-#     amp  = approxMP(T, m, dd)
-#     absf, absf_loc= bsfMotif(amp)
-#     absf_loc = idxList[absf_loc]
-#     if dd > 1:
-#         # bsf,bsf_loc, bsf_origin = refine(T,m, dd, absf_loc, bsf, bsf_loc, idxList)
-#         bsf,bsf_loc, bsf_origin = refine(T_origin,m, dd, absf_loc, bsf, bsf_loc, idxList)
-#         if absf != bsf:
-#             pruned_T , pruned_idxList = prune(T, m, absf, bsf, amp, idxList)
-#         else:
-#             pruned_T, pruned_idxList = T, idxList
-#         return pruned_T, pruned_idxList, amp, absf, bsf, bsf_loc, bsf_origin, absf_loc
-#     else:
-#         # absf, absf_loc = round(absf,2), idxList[absf_loc]
-#         absf = round(absf,2)
-#         return T, idxList, amp, absf, absf, absf_loc, absf, absf_loc
 
 
 def next_closest_multiple_greater(N, K):

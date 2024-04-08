@@ -29,28 +29,38 @@ def vis(T_origin, T, m, dd, uamp, absf, bsf, bsf_loc, absf_loc, pruned_T, prunin
     axs[1].axhline(y=absf , color = 'r')
     axs[1].set_title(f'UAMP (m = {m} - dsr = {dd})', fontsize = 10)
     for loc in absf_loc : axs[1].axvline(loc, color = 'r', label = loc)
-    # for loc in bsf_loc : axs[0].axvline(loc, color = 'g', label=  loc)
     axs[1].axhline(y=bsf , color = 'g')
-    # for ax in axs:
-    #     ax.legend()
 
     plt.subplots_adjust(hspace=0.75)
+    plt.subplots_adjust(top=0.8, bottom=0.2, left=0.1, right=0.8)
     plt.show()
 
-    fig2  = plt.figure(figsize=(4,1.2))
+    fig1.savefig(os.path.join(figpath, \
+                'Torigin_{}_Tpaa1in{}_step1_T_mp_uamp_absf_n_{}_m_{}.svg'.format(len(T_origin), dd, len(T), m)))
+
+    fig2  = plt.figure(figsize=(4,1.5))
     axs = fig2.subplots(1,1,sharex=True)
     axs.plot(T_origin, color = 'k', linewidth = 1)
     for loc in bsf_loc : axs.axvline(loc, color = 'g', label=  loc)
     axs.set_title(f'bsfLoc in Original T', fontsize = 10)
+    plt.subplots_adjust(top=0.8, bottom=0.5, left=0.1, right=0.8)
     plt.show()
+
+    fig2.savefig(os.path.join(figpath, \
+                'Torigin_{}_Tpaa1in{}_step2_bsf.svg'.format(len(T_origin),dd)))
 
 
     if dd > 1:
-        fig3  = plt.figure(figsize=(4,1.2))
+        fig3  = plt.figure(figsize=(4,1.5))
         axs = fig3.subplots(1,1,sharex=True)
         # axs[0].plot(T)
         axs.plot(pruned_T, color = 'r', linewidth = 1)
         axs.set_title(f'Pruned T (pruning {pruning_perc}%)', fontsize = 10)
+        plt.subplots_adjust(top=0.8, bottom=0.5, left=0.1, right=0.8)
         plt.show()
+        fig3.savefig(os.path.join(figpath, \
+                'Torigin_{}_Tpaa1in{}_step3_prun_{}.svg'.format(len(T_origin),dd, pruning_perc)))
+
+
 
     

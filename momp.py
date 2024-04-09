@@ -22,14 +22,13 @@ import os
 
 
 
-def momp(T, m , verbose = True):
+def momp(T, m , verbose = True, plotting = True):
 
     global T_origin
     T_origin = T
     dd = m // 4
     bsf, bsf_loc = np.inf, None
     idxList = np.arange(len(T))
-    plotting = 0
     st = time.time()
 
     print('T length: {} | m: {} | starting dsr:{}'.format(len(T), m, dd))
@@ -47,6 +46,7 @@ def momp(T, m , verbose = True):
         # axs[0].plot(T, color = 'k', linewidth = 1)
         # axs[0].set_title('T (without downsampling)', fontsize = 10)
         # axs[1].plot(uamp , color = 'b')
+        # axs[1].plot(mpx.compute(T,m)['mp'] , color = 'g')
         # axs[1].axhline(y=absf , color = 'r')
         # axs[1].set_title(f'UAMP (m = {m} - dsr = {dd})', fontsize = 10)
         # for loc in absf_loc_pruned_version : axs[1].axvline(loc, color = 'r', label = loc)
@@ -64,9 +64,9 @@ def momp(T, m , verbose = True):
         # Refinement
         # bsf,bsf_loc, local_bsf = refine(T_origin,m, dd, absf_loc, bsf, bsf_loc)
         bsf,bsf_loc, local_bsf = refine(T_origin,m, dd, absf_loc, bsf)
-
+        print('absf:',absf,'| bsf: ', bsf, np.min(uamp), np.max(uamp))
         # Pruning
-        pruned_T , pruned_idxList = prune(T, m, absf, bsf, uamp, idxList) 
+        pruned_T , pruned_idxList = prune(T_origin, m, absf, bsf, uamp, idxList) 
 
         pruning = round(1 - (len(pruned_T) / len(T_origin)), 2)
 
@@ -82,11 +82,36 @@ def momp(T, m , verbose = True):
 def next_closest_multiple_greater(N, K):
     quotient, remainder = divmod(N, K)
     if remainder == 0:
-        return (quotient + 1) * K
+        return N
     else:
         return (quotient + 1) * K
 
 
+def runMP(T, m, verbose = 1, plotting = 1):
+    st = time.time()
+    mp = mpx.compute(T,m)['mp']
+    mp_val, mp_loc = bsfMotif(mp)
+    mp_time = round(time.time() - st,5)
+
+    if plotting:
+        current_date = datetime.now().strftime("%m-%d-%Y")
+        figpath = f"./fig/{current_date}/"
+        if not(os.path.exists(figpath)):
+            os.makedirs(figpath)
+        fig  = plt.figure(figsize=(4,3))
+        axs = fig.subplots(2,1,sharex=True)
+        axs[0].plot(T, color  = 'b', linewidth = 1)
+        axs[0].set_title(f'T (n = {len(T_origin)})', fontsize = 10)
+        axs[1].plot(mp, color  = 'r', linewidth = 1)
+        axs[1].set_title(f'MP (m = {m})', fontsize = 10)
+        plt.show()
+        fig.savefig(os.path.join(figpath, \
+                    'Torigin_{}_Tpaa1in1_step0_MP_m_{}.svg'.format(len(T_origin),m)))
+
+    if verbose:
+        print('MPx >> {} | loc : {} | time: {}s'.format(round(mp_val,2), mp_loc, mp_time))
+
+    return mp, mp_time
 
 
 
@@ -97,8 +122,8 @@ def main(verbose = True):
     global mp
     global T_origin
 
-    n = 500000
-    T , m = genData(n, dtype='rwalk') , 512
+    n = 128
+    T , m = genData(n, mlen = 8, dtype='rwalk') , 8
     dd = m // 4
 
     if verbose:
@@ -110,29 +135,9 @@ def main(verbose = True):
     T = np.pad(T, (0, padcount), mode='constant', constant_values=0)
     T_origin, n_orig = T, len(T)
 
-    # #Evaluation of the result
-    st = time.time()
-    mp = mpx.compute(T,m)['mp']
-    mp_val, mp_loc = bsfMotif(mp)
-    mp_time = round(time.time() - st,5)
-    # current_date = datetime.now().strftime("%m-%d-%Y")
-    # figpath = f"./fig/{current_date}/"
-    # if not(os.path.exists(figpath)):
-    #     os.makedirs(figpath)
-    # fig  = plt.figure(figsize=(4,3))
-    # axs = fig.subplots(2,1,sharex=True)
-    # axs[0].plot(T, color  = 'b', linewidth = 1)
-    # axs[0].set_title(f'T (n = {len(T_origin)})', fontsize = 10)
-    # axs[1].plot(mp, color  = 'r', linewidth = 1)
-    # axs[1].set_title(f'MP (m = {m})', fontsize = 10)
-    # plt.show()
-    # fig.savefig(os.path.join(figpath, \
-    #             'Torigin_{}_Tpaa1in1_step0_MP_m_{}.svg'.format(len(T_origin),m)))
+    mp, mp_time = runMP(T, m, verbose = 1, plotting=0)
 
-    if verbose:
-        print('MPx >> {} | loc : {} | time: {}s'.format(round(mp_val,2), mp_loc, mp_time))
-
-    _, _, momp_time = momp(T, m, verbose)
+    _, _, momp_time = momp(T, m, verbose = 1, plotting = 1)
 
     if verbose:
         print('Speedup : {}X | MPx:{}s | MOMP: {}s'.format(round(mp_time / momp_time), mp_time, momp_time))

@@ -18,12 +18,12 @@
 function [momp_out, momp_loc] = momp(T, m, verbose)
 
     plotting = 0;
+    run_mp = 1;
     
     T_orig = T;
     n_orig = length(T);
     dd = m / 4;
     bsf = inf; bsfloc = nan;
-    run_mp = 1;
     indices = (1:n_orig)';
     
     if verbose
@@ -79,8 +79,11 @@ function [momp_out, momp_loc] = momp(T, m, verbose)
             [mp, ~, loc, ~] = mpx_v2(T, m, m); %for sanity check
             momp_time = toc;
             momp_out = min(mp); momp_loc = indices(loc(1:2,1));
-            fprintf('MOMP : Tpaa1in%d | BSF: %0.2f {%d, %d} | Tot Time: %0.2f\n',...
-                            dd, momp_out, momp_loc(1), momp_loc(2), momp_time);
+            fprintf('MOMP : Tpaa1in%d | BSF: %0.2f {%d, %d} | Tot Time: %0.2f \n',...
+                     dd, momp_out, momp_loc(1), momp_loc(2), momp_time);
+            if run_mp
+                fprintf('Speedup: %dX \n', floor(mp_time/momp_time));
+            end
             
             break;
         end
@@ -92,24 +95,6 @@ end
 
 
 %%
-% function [ip] = KTIP(T,m, dd)
-% 
-%     ip = nan(length(T),1);
-%     
-%     for ii = 1:length(T)-m
-%         
-%         query = zscore(T(ii:ii+m));
-%         jj = min([ii+m+dd-1 , length(T)]);
-%         curr_T = zscore(T(ii+1:jj));
-%         [dist_profile] = SimMat(curr_T, m, query);
-%         dist_profile = dist_profile(1,:);
-%         ip(ii) = max(dist_profile);
-%         
-%     end
-%     
-% end
-
-
 function [uamp_base, uamp, absf, absf_loc, ip] = upsample_approximate_mp(T, m, dd, indices)
     %Current assumption : T = k1*dd m = k2*dd 
     tic;
@@ -161,8 +146,8 @@ function [pruned_T, pruned_indices] = prune(T, m, indices, uamp, absf, bsf)
     
 end
 
-function [pruned] = idxFilter(targets, indices, m)
-    margin = m;
+function [pruned_indices] = idxFilter(targets, indices, m)
+    margin = m/4;
     gaps = find([2; diff(targets)] > 1);
     pruned = [];
     for ii=1:length(gaps)-1
@@ -172,16 +157,19 @@ function [pruned] = idxFilter(targets, indices, m)
         else
             ss = max([1, set(1)- margin, pruned(end)+1]);
         end
-        ee = min([set(end)+m + margin , indices(end)]);
-        pruned = [pruned ; indices(ss:ee)];
+        ee = min([set(end)+m + margin , length(indices)]);
+        pruned = [pruned ; (ss:ee)'];
     end
     if isempty(pruned)
         ss = max([1 , targets(gaps(end))-margin]);
     else
         ss = max([pruned(end) + 1, targets(gaps(end))-margin]);
     end
-    ee = min([targets(end)+ m + margin , indices(end)]);
-    pruned = [pruned ; indices(ss:ee)];
+   
+    ee = min([targets(end)+ m + margin , length(indices)]);
+
+    pruned = [pruned ; (ss:ee)'];
+    pruned_indices = indices(pruned);
 
     
 end

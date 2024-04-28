@@ -13,6 +13,7 @@
 %% Supporting files/functions
             % mpx_v2.m
             % ktip_v1.m
+            % MASS_s2.m
             % paa.m
             
 %% Main Functions
@@ -44,6 +45,7 @@ function [momp_out, momp_loc] = momp(T, m, verbose, run_mp, plotting)
     bsf = inf; bsfloc = nan;
     indices = (1:n_orig)';
     profiling = 1;
+    profile_steps = 0;
     
     if verbose
         fprintf('T is length %d, and m is set to %d\n', n_orig, m);
@@ -54,7 +56,10 @@ function [momp_out, momp_loc] = momp(T, m, verbose, run_mp, plotting)
         [mp, ~, loc, ~] = mpx_v2(T, m, m);
 %         figure; plot(mp);
         mp_time = toc;
-        fprintf('MP : %0.2f {%d, %d} | time: %0.2f\n', min(mp), loc(1,1), loc(2,1), mp_time);
+        if verbose
+            fprintf('====== MPx ======\n')
+            fprintf('MP : %0.2f {%d, %d} | time: %0.2f\n', min(mp), loc(1,1), loc(2,1), mp_time);
+        end
     end
     
     ktip_tot_time = 0;
@@ -67,10 +72,16 @@ function [momp_out, momp_loc] = momp(T, m, verbose, run_mp, plotting)
     curr_prune_time = 0;
     
     momp_tot_tic = tic;
+    
+    ktip_tic = tic;
+    [ktip] = ktip_v1(T, m, dd);
+    ktip_tot_time = toc(ktip_tic); 
+    
+    if verbose, fprintf('====== MOMP ======\n'); end
 
     while true
            
-        [uamp_base, uamp, absf, local_bsf_loc, ip, ktip_time, uamp_time] = upsample_approximate_mp(T, m, dd, indices);
+        [uamp_base, uamp, absf, local_bsf_loc, ip, uamp_time] = upsample_approximate_mp(T, m, dd, indices, ktip(1:end, log2(dd)));
         
         refine_tic = tic;
         [bsf, bsfloc, local_bsf] = refine(T_orig, m, bsf, bsfloc, local_bsf_loc, dd);
@@ -83,8 +94,8 @@ function [momp_out, momp_loc] = momp(T, m, verbose, run_mp, plotting)
         pruning = 1 - (length(pruned_T) / n_orig) ;
         
         % Summary
-        fprintf('MOMP : Tpaa1in%d | BSF: %0.2f {%d, %d} | localBSF: %0.2f {%d, %d} | pruning: %0.4f\n',...
-                  dd, bsf, bsfloc(1), bsfloc(2), local_bsf, local_bsf_loc(1), local_bsf_loc(2), pruning);
+        if verbose, fprintf('MOMP : Tpaa1in%d | BSF: %0.2f {%d, %d} | localBSF: %0.2f {%d, %d} | pruning: %0.4f\n',...
+                  dd, bsf, bsfloc(1), bsfloc(2), local_bsf, local_bsf_loc(1), local_bsf_loc(2), pruning); end
   
         if plotting
             
@@ -104,12 +115,11 @@ function [momp_out, momp_loc] = momp(T, m, verbose, run_mp, plotting)
             title('Pruned T', 'FontSize',14); box off;
         end
         
-        if profiling
-            
-            ktip_tot_time = ktip_tot_time + ktip_time;
-            uamp_tot_time = uamp_tot_time + uamp_time;
-            refine_tot_time = refine_tot_time + refine_time;
-            prune_tot_time = prune_tot_time + prune_time;
+        uamp_tot_time = uamp_tot_time + uamp_time;
+        refine_tot_time = refine_tot_time + refine_time;
+        prune_tot_time = prune_tot_time + prune_time;
+        
+        if verbose && profile_steps
             
             fprintf('Tpaa1in%d  : KTIP: %0.2fs \n', dd, ktip_time);
             fprintf('Tpaa1in%d  : UAMP: %0.2fs \n', dd, uamp_time);
@@ -127,11 +137,9 @@ function [momp_out, momp_loc] = momp(T, m, verbose, run_mp, plotting)
             momp_time = toc(momp_tot_tic);
             fprintf('MOMP : Tpaa1in%d | BSF: %0.2f {%d, %d} | Tot Time: %0.2fs \n',...
                      dd, momp_out, momp_loc(1), momp_loc(2), momp_time);
-            if run_mp
-                fprintf('Speedup: %dX \n', floor(mp_time/momp_time));
-            end
             
-            if profiling
+            if verbose && profiling
+                fprintf('====== Profiling Summary ======\n')
                 fprintf('Tot KTIP time : %0.2fs  (%0.2f of momp time)\n',...
                                     ktip_tot_time, ktip_tot_time/momp_time);
                 fprintf('Tot UAMP time : %0.2fs  (%0.2f of momp time)\n',...
@@ -140,6 +148,9 @@ function [momp_out, momp_loc] = momp(T, m, verbose, run_mp, plotting)
                                     refine_tot_time, refine_tot_time/momp_time);  
                 fprintf('Tot Prune time : %0.2fs  (%0.2f of momp time)\n',...
                                     prune_tot_time, prune_tot_time/momp_time);
+            end
+            if verbose && run_mp
+                fprintf('>> Speedup: %dX \n', floor(mp_time/momp_time));
             end
             
             break;
@@ -152,30 +163,37 @@ end
 
 
 %%
-function [uamp_base, uamp, absf, absf_loc, ip, ktip_time, uamp_time] = upsample_approximate_mp(T, m, dd, indices)
+function [uamp_base, uamp, absf, absf_loc, uktip, uamp_time] = upsample_approximate_mp(T, m, dd, indices, ip)
+    
     %Current assumption : T = k1*dd m = k2*dd 
-    ktip_tic = tic;
-    [ip] = ktip_v1(T, m, dd);
-    ktip_time = toc(ktip_tic); 
+    mask = indices <= length(ip);
+    ktip = ip(indices(mask));
+    ktip_ds = ktip(1:dd:length(T)-m +1);
     
     uamp_tic = tic;
     n = length(T);
     [Tds, ~] = paa(T, floor(n/dd));
     mds = m/dd;
-    [amp, ~, loc, ~] = mpx_v2(Tds, mds, mds);
+    [amp, ampIdx, loc, ~] = mpx_v2(Tds, mds, mds);
     absf_loc = (loc(1:2,1) * dd) - dd + 1;
     absf_loc = indices(absf_loc);
     
     uamp_base = sqrt(dd) * repelem(amp, dd);
     uamp_base = uamp_base(1:length(T)-m+1);
 
-    ipds = ip(1:dd:end);
-    uip = repelem(ipds, dd);
-    ip = uip;
-    uamp = uamp_base - uip(1:length(uamp_base));
+    
+    uktip = repelem(ktip_ds, dd);
+    uktip = uktip(1:length(T)-m+1);
+    
+    ktip_ds_nn = ktip_ds(ampIdx);
+    uktip_nn = repelem(ktip_ds_nn, dd);
+    uktip_nn = uktip_nn(1:length(T)-m+1);
+    
+    
+    uamp = uamp_base - uktip - uktip_nn;
     absf = min(uamp);
     uamp_time = toc(uamp_tic); 
-    
+
     
 end
 
@@ -184,7 +202,7 @@ end
 function [bsf, bsfloc, localbsf] = refine(T, m, bsf, bsfloc, amloc, dd)
 
     ii = amloc(1); jj = amloc(2);
-    [localbsf] = MASS_s2(T(ii:ii+m), T(jj:jj+m));
+    [localbsf] = MASS_s2(T(ii:ii+m-1), T(jj:jj+m-1));
     
     st1 = max([1, ii - dd + 1]); end1 = min([length(T), ii + m + dd - 1]);
     st2 = max([1, jj - dd + 1, end1]); end2 = min([length(T), jj + m + dd - 1]);

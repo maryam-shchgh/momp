@@ -41,9 +41,13 @@ dg = [0; (timeSeries(1 + subseqLen : n) - mu(2 : n - subseqLen + 1)) + (timeSeri
 
 % Output Similarity matrix
 profileRowCount = n - subseqLen + 1;
+profileColCount = floor(log2(dsrate));
 
 % similarityMatrix = NaN(similarityMatrixLength, similarityMatrixLength);
-kTriangIneqProfile = NaN(profileRowCount, 1);
+curr_kTriangIneqProfile = NaN(profileRowCount, 1);
+
+kTriangIneqProfile = NaN(profileRowCount, profileColCount);
+
 
 
 % The terms row and diagonal here refer to a hankel matrix representation of a time series
@@ -56,18 +60,30 @@ for diag = minlag + 1 : dsrate
         col = row + diag - 1;
         cov_ = cov_ + df(row) * dg(col) + df(col) * dg(row);
         corr_ = cov_ * invsig(row) * invsig(col);
-        if isnan(kTriangIneqProfile(row)) || corr_ < kTriangIneqProfile(row)
-            kTriangIneqProfile(row) = corr_;
+        if  isnan(curr_kTriangIneqProfile(row)) || corr_ < curr_kTriangIneqProfile(row)
+            curr_kTriangIneqProfile(row) = corr_;
+
         end
 
-        if isnan(kTriangIneqProfile(col)) || corr_ < kTriangIneqProfile(col)
-            kTriangIneqProfile(col) = corr_;
-        end
-            
+        if isnan(curr_kTriangIneqProfile(col)) || corr_ < curr_kTriangIneqProfile(col)
+            curr_kTriangIneqProfile(col) = corr_;
+
+        end     
     end
+    ktip_col = log2(diag);
+    if diag > 1 && ktip_col == fix(ktip_col)
+        kTriangIneqProfile(1:end, ktip_col) = curr_kTriangIneqProfile;
+
+    end    
 end
 
+
+% kTriangIneqProfile = kTriangIneqProfile + kTriangIneqProfile(kTriangIneqProfileIdx);
+
+% kTriangIneqProfile_nn = kTriangIneqProfile(kTriangIneqProfileIdx);
 kTriangIneqProfile = sqrt(max(0, 2 * (subseqLen - kTriangIneqProfile), 'includenan'));
+
+
 
 if transposed_   % matches the profile and profile index but not the motif or discord index to the input format
 %     similarityMatrix = transpose(similarityMatrix);

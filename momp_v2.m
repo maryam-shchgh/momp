@@ -37,8 +37,6 @@ function [momp_out, momp_loc] = momp_v2(T, m, verbose, run_mp, plotting)
     end
     
 
-
-
     T_orig = T;
     n_orig = length(T);
     dd = m / 16;
@@ -64,12 +62,9 @@ function [momp_out, momp_loc] = momp_v2(T, m, verbose, run_mp, plotting)
     
     ktip_tot_time = 0;
     uamp_tot_time = 0;
+    lbmp_tot_time = 0;
     refine_tot_time = 0;
     prune_tot_time = 0;
-    curr_ktip_time = 0;
-    curr_uamp_time = 0;
-    curr_refine_time = 0;
-    curr_prune_time = 0;
     
     momp_tot_tic = tic;
     
@@ -81,14 +76,14 @@ function [momp_out, momp_loc] = momp_v2(T, m, verbose, run_mp, plotting)
 
     while true
            
-        [uamp_base, uamp, absf, local_bsf_loc, ip, uamp_time] = upsample_approximate_mp(T, m, dd, indices, ktip(1:end, log2(dd)));
+        [lbmp, camp, uamp, absf, local_bsf_loc, ip, uamp_time, lbmp_time] = upsample_approximate_mp(T, m, dd, indices, ktip(1:end, log2(dd)));
         
         refine_tic = tic;
         [bsf, bsfloc, local_bsf] = refine(T_orig, m, bsf, bsfloc, local_bsf_loc, dd);
         refine_time = toc(refine_tic);
         
         prune_tic = tic;
-        [pruned_T, pruned_indices] = prune(T_orig, m, indices, uamp, absf, bsf);
+        [pruned_T, pruned_indices] = prune(T_orig, m, indices, lbmp, absf, bsf);
         prune_time = toc(prune_tic);
         
         pruning = 1 - (length(pruned_T) / n_orig) ;
@@ -100,29 +95,32 @@ function [momp_out, momp_loc] = momp_v2(T, m, verbose, run_mp, plotting)
         if plotting
             
             figure;
-            subplot(4,1,1); plot(T, 'Color', 'b', 'LineWidth', 1);
+            subplot(3,1,1); plot(T, 'Color', 'b', 'LineWidth', 1);
             title(sprintf('Tpaa1in%d Input T (No downsampling)', dd), 'FontSize',14)
             box off;
-            subplot(4,1,2); plot(uamp_base, 'k', 'LineWidth', 1); 
-            hold on; plot(ip, 'r', 'LineWidth', 1); 
+            
+            subplot(3,1,2); plot(uamp, 'k', 'LineWidth', 1); 
+            hold on; plot(ip, 'g', 'LineWidth', 1); 
             title('Initial UAMP', 'FontSize',14);  box off;
-            legend('','KTIP');
-            subplot(4,1,3); plot(uamp, 'b', 'LineWidth', 1); 
-            title('Final UAMP', 'FontSize',14);  box off;
-            hold on; yline(bsf, 'r', 'LineWidth', 1);
-            legend('','BSF');
-            subplot(4,1,4); plot(pruned_T, 'b', 'LineWidth', 1);
+            hold on; plot(camp, 'b', 'LineWidth', 1); 
+            hold on; plot(lbmp, 'Color', [0.3010 0.7450 0.9330], 'LineWidth', 1); 
+            hold on; yline(bsf, 'Color', 'r', 'LineWidth', 1);
+            legend('AMP', 'KTIP', 'CAMP', 'LBMP', 'BSF');
+            title('AMP --> CAMP --> LBMP', 'FontSize',14);  box off;
+            
+            subplot(3,1,3); plot(pruned_T, 'b', 'LineWidth', 1);
             title('Pruned T', 'FontSize',14); box off;
         end
         
         uamp_tot_time = uamp_tot_time + uamp_time;
+        lbmp_tot_time = lbmp_tot_time + lbmp_time;
         refine_tot_time = refine_tot_time + refine_time;
         prune_tot_time = prune_tot_time + prune_time;
         
         if verbose && profile_steps
-            
-            fprintf('Tpaa1in%d  : KTIP: %0.2fs \n', dd, ktip_time);
+            fprintf('Tpaa1in%d - len(T) : %d \n', dd, length(T))
             fprintf('Tpaa1in%d  : UAMP: %0.2fs \n', dd, uamp_time);
+            fprintf('Tpaa1in%d  : LBMP: %0.2fs \n', dd, lbmp_time);
             fprintf('Tpaa1in%d  : Refinement: %0.2fs \n', dd, refine_time);
             fprintf('Tpaa1in%d  : Prunning: %0.2fs \n', dd, prune_time);
         end
@@ -137,6 +135,14 @@ function [momp_out, momp_loc] = momp_v2(T, m, verbose, run_mp, plotting)
             momp_time = toc(momp_tot_tic);
             fprintf('MOMP : Tpaa1in%d | BSF: %0.2f {%d, %d} | Tot Time: %0.2fs \n',...
                      dd, momp_out, momp_loc(1), momp_loc(2), momp_time);
+                 
+            figure;
+            plot(T_orig(momp_loc(1):momp_loc(1)+m), 'b', 'LineWidth', 1);
+            hold on;
+            plot(T_orig(momp_loc(2):momp_loc(2)+m), 'r', 'LineWidth', 1);
+            title(sprintf('MOMP : T_{%d} and T_{%d}', momp_loc(1), momp_loc(2)),'FontSize',14);
+            box off;
+            
             
             if verbose && profiling
                 fprintf('====== Profiling Summary ======\n')
@@ -144,6 +150,8 @@ function [momp_out, momp_loc] = momp_v2(T, m, verbose, run_mp, plotting)
                                     ktip_tot_time, ktip_tot_time/momp_time);
                 fprintf('Tot UAMP time : %0.2fs  (%0.2f of momp time)\n',...
                                     uamp_tot_time, uamp_tot_time/momp_time);
+                fprintf('Tot LBMP time : %0.2fs  (%0.2f of momp time)\n',...
+                                    lbmp_tot_time, lbmp_tot_time/momp_time);
                 fprintf('Tot Refine time : %0.2fs  (%0.2f of momp time)\n',...
                                     refine_tot_time, refine_tot_time/momp_time);  
                 fprintf('Tot Prune time : %0.2fs  (%0.2f of momp time)\n',...
@@ -163,7 +171,39 @@ end
 
 
 %%
-function [uamp_base, uamp, absf, absf_loc, uktip, uamp_time] = upsample_approximate_mp(T, m, dd, indices, ip)
+function [camp] = compCamp(T, m, amp, ktip, dd)
+
+    ktip_ds = ktip(1:dd:length(T)-m +1);
+    camp_ds = amp - ktip_ds;
+    camp = repelem(camp_ds, dd);
+    camp = camp(1:length(T)-m+1);
+    
+end
+
+function [lbmp, camp] = compLB(T, m, amp, ktip, dd)
+    
+    subsequence_count = length(T)-m +1;
+    ktip_ds = ktip(1:dd:subsequence_count);
+    
+    camp_ds = (sqrt(dd)*amp) - ktip_ds;
+    camp = repelem(camp_ds, dd);
+    camp = camp(1:length(T)-m+1);
+    lbmp_ds = -inf(size(ktip_ds));
+    
+    for ii=1:length(amp)
+        ktip_ds_ii = ones(size(ktip_ds))*ktip_ds(ii);   
+        ktip_ds_ii(ii) = inf;
+        temp_lb = camp_ds - ktip_ds_ii;
+        lbmp_ds = max(temp_lb, lbmp_ds);
+    end
+    
+    lbmp = repelem(lbmp_ds, dd);
+    lbmp = lbmp(1:subsequence_count);
+        
+end
+
+
+function [lbmp, camp, uamp, absf, absf_loc, uktip, uamp_time, lbmp_time] = upsample_approximate_mp(T, m, dd, indices, ip)
     
     %Current assumption : T = k1*dd m = k2*dd 
     mask = indices <= length(ip);
@@ -174,25 +214,25 @@ function [uamp_base, uamp, absf, absf_loc, uktip, uamp_time] = upsample_approxim
     n = length(T);
     [Tds, ~] = paa(T, floor(n/dd));
     mds = m/dd;
-    [amp, ampIdx, loc, ~] = mpx_v2(Tds, mds/2, mds);
+    [amp, ~, loc, ~] = mpx_v2(Tds, mds/2, mds);
     absf_loc = (loc(1:2,1) * dd) - dd + 1;
     absf_loc = indices(absf_loc);
     
-    uamp_base = sqrt(dd) * repelem(amp, dd);
-    uamp_base = uamp_base(1:length(T)-m+1);
+    
+    uamp = sqrt(dd) * repelem(amp, dd);
+    uamp = uamp(1:length(T)-m+1);
+    uamp_time = toc(uamp_tic); 
 
     
     uktip = repelem(ktip_ds, dd);
     uktip = uktip(1:length(T)-m+1);
+
+    lbmp_tic = tic;
+    [lbmp, camp] = compLB(T, m, amp, ktip, dd);
+    lbmp_time = toc(lbmp_tic); 
     
-    ktip_ds_nn = ktip_ds(ampIdx);
-    uktip_nn = repelem(ktip_ds_nn, dd);
-    uktip_nn = uktip_nn(1:length(T)-m+1);
-    
-    
-    uamp = uamp_base - uktip - uktip_nn;
-    absf = min(uamp);
-    uamp_time = toc(uamp_tic); 
+    absf = min(lbmp);
+    lbmp_time = toc(lbmp_tic); 
 
     
 end
@@ -204,12 +244,13 @@ function [bsf, bsfloc, localbsf] = refine(T, m, bsf, bsfloc, amloc, dd)
     ii = amloc(1); jj = amloc(2);
     [localbsf] = MASS_s2(T(ii:ii+m-1), T(jj:jj+m-1));
     
-    st1 = max([1, ii - dd + 1]); end1 = min([length(T), ii + m + dd - 1]);
-    st2 = max([1, jj - dd + 1, end1]); end2 = min([length(T), jj + m + dd - 1]);
-    indices = [(st1:end1) , (st2:end2)];
+    st1 = ii; end1 = min([length(T), ii + m + dd - 1]);
+    st2 = max([jj, end1]); end2 = min([length(T), jj + m + dd - 1]);
     
-    [mp, ~, loc, ~] = mpx_v2(T(indices), (end1-st1), m);
+    indices = [(st1:end1) , nan(1,m/4), (st2:end2)];
+    T_temp = [T(st1:end1); nan(m/4,1); T(st2:end2)];
     
+    [mp, ~, loc, ~] = mpx_v2(T_temp, end1-st1, m);
     currbsf = min(mp);
     if currbsf <= bsf
         bsf = currbsf;

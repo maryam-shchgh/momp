@@ -1,4 +1,11 @@
 %% MOMP (Motif-Only Matrix Profile)
+
+% Updates : 1) Handling row/col T
+%           2) Handling all n and m values not just power of 2
+
+% TODO:     1) Creating Pruning flow video (WIP)
+%           2) Handling AB-join
+
 %% Inputs:  
             % T (Input time series)
             % m (Subsequence length) 
@@ -40,7 +47,9 @@ function [momp_out, momp_loc] = momp_v3(T, m, verbose, run_mp, plotting)
 
     T_orig = T;
     n_orig = length(T);
-    dd = (2^floor(log2(m))) / 32;
+    dd = (2^floor(log2(m))) / 64;
+    
+    % Computing initial bsf value by picking random indices from 1:n-m+1 
     bsf = inf; bsfloc = nan;
     indices = (1:n_orig)';
     
@@ -95,7 +104,7 @@ function [momp_out, momp_loc] = momp_v3(T, m, verbose, run_mp, plotting)
   
         if plotting , generatePlots(T, dd, uamp, ip, camp, lbmp, bsf, pruned_T); end
         
-        if write_video , create_pruning_video(v, T_orig, pruned_indices); end
+        if write_video , display_pruning_flow(v, T_orig, pruned_indices); end
         
         uamp_tot_time = uamp_tot_time + uamp_time;
         lbmp_tot_time = lbmp_tot_time + lbmp_time;
@@ -159,8 +168,7 @@ end
 function [lbmp, camp] = compLB(T, m, amp, ktip, dd)
     
     subsequence_count = length(T)-m +1;
-    ktip_ds = ktip(1:dd:subsequence_count);
-    amp = amp(1:length(ktip_ds));   
+    ktip_ds = ktip(1:dd:subsequence_count);   
     camp_ds = (sqrt(dd)*amp) - ktip_ds;
     camp = repelem(camp_ds, dd);
     camp = camp(1:length(T)-m+1);

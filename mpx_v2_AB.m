@@ -1,9 +1,9 @@
-function [matrixProfile, matrixProfileIdx, motifsIdx] = mpx_v2_AB(timeSeries, minlag, subseqlen, split)
+function [matrixProfile, matrixProfileIdx, motifsIdx] = mpx_v2_AB(timeSeries, subseqlen, split)
 
 
 subcount = length(timeSeries) - subseqlen + 1;
 
-if nargin ~= 4
+if nargin ~= 3
     error('incorrect number of input arguments');
 elseif ~isvector(timeSeries)
     error('first argument must be a 1D vector');
@@ -51,24 +51,27 @@ matrixProfile = repmat(-1, subcount, 1);
 matrixProfile(nanmap) = NaN;
 matrixProfileIdx = NaN(subcount, 1);
 
-
-for diag = 2 : subcount
+minlag = floor(subseqlen/2);
+for diag = minlag + 1 : subcount
     cov_ = sum((timeSeries(diag : diag + subseqlen - 1) - mu(diag)) .* (timeSeries(1 : subseqlen) - mu(1)));
-    for row = max(1, split-diag+1) : min(split-1, subcount - diag + 1)
+    for row = 1 : subcount - diag + 1
         col = diag + row - 1;
         if row > 1
             cov_ = cov_ - dr_bwd(row) * dc_bwd(col) + dr_fwd(row) * dc_fwd(col);
         end
         corr_ = cov_ * invnorm(row) * invnorm(col);
-        if corr_ > matrixProfile(row)
-            matrixProfile(row) = corr_;
-            matrixProfileIdx(row) = col;
-        end
-        if corr_ > matrixProfile(col)
-            matrixProfile(col) = corr_;
-            matrixProfileIdx(col) = row;
+        if (row < split && col >= split) || (row >=split && col < split)
+            if corr_ > matrixProfile(row)
+                matrixProfile(row) = corr_;
+                matrixProfileIdx(row) = col;
+            end
+            if corr_ > matrixProfile(col)
+                matrixProfile(col) = corr_;
+                matrixProfileIdx(col) = row;
+            end
         end
     end
+    
 end
 
 [motifsIdx] = findMotifs(timeSeries, mu, invnorm, matrixProfile, matrixProfileIdx, subseqlen, minlag);

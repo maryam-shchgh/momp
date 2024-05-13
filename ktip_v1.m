@@ -45,8 +45,10 @@ profileColCount = floor(log2(dsrate));
 
 % similarityMatrix = NaN(similarityMatrixLength, similarityMatrixLength);
 curr_kTriangIneqProfile = NaN(profileRowCount, 1);
+curr_kTriangIneqProfile_min = NaN(profileRowCount, 1);
 
 kTriangIneqProfile = NaN(profileRowCount, profileColCount);
+kTriangIneqProfile_min = NaN(profileRowCount, profileColCount);
 
 
 
@@ -92,6 +94,7 @@ end
 
 end
 
+% kTriangIneqProfile_min = 
 
 
 

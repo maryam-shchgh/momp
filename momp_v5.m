@@ -16,6 +16,7 @@
             % ktip_v1.m
             % MASS_s2.m
             % paa.m
+            % cat_timeseries.m
             
 %% Main Functions
 

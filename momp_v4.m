@@ -19,7 +19,7 @@
             
 %% Main Functions
 
-function [momp_out, momp_loc, scores] = momp_v4(T, m, verbose, run_mp, plotting)
+function [momp_out, momp_loc, scores, lbmp] = momp_v4(T, m, verbose, run_mp, plotting)
 
     
     if nargin < 2
@@ -41,7 +41,7 @@ function [momp_out, momp_loc, scores] = momp_v4(T, m, verbose, run_mp, plotting)
 
     T_orig = T;
     n_orig = length(T);
-    dd = (2^floor(log2(m))) / 64;
+    if m < 512, dd = (2^floor(log2(m))) / 16; else, dd = (2^floor(log2(m))) / 32; end
     
     % Computing initial bsf value by picking random indices from 1:n-m+1 
     while true
@@ -72,12 +72,15 @@ function [momp_out, momp_loc, scores] = momp_v4(T, m, verbose, run_mp, plotting)
     if run_mp
         tic;
         [mp, ~, loc, ~] = mpx_v2(T, floor(m/2), m);
+        mp_orig = mp;
+        
         mp_time = toc;
         if verbose
             fprintf('====== MPx ======\n')
             fprintf('MP : %0.2f {%d, %d} | time: %0.2f\n', min(mp), loc(1,1), loc(2,1), mp_time);
         end
     end
+    
     
     uamp_tot_time = 0;
     lbmp_tot_time = 0;
@@ -93,8 +96,9 @@ function [momp_out, momp_loc, scores] = momp_v4(T, m, verbose, run_mp, plotting)
     if verbose, fprintf('====== MOMP ======\n'); end
 
     while true
-           
+%         dd = 2; momp_out = nan; momp_loc = nan; scores = nan;
         [lbmp, camp, uamp, absf, local_bsf_loc, ip, uamp_time, lbmp_time] = upsample_approximate_mp(T, m, dd, indices, ktip(1:end, log2(dd)));
+%         break;
         
         refine_tic = tic;
         [bsf, bsfloc, local_bsf] = refine(T_orig, m, bsf, bsfloc, local_bsf_loc, dd);
@@ -105,9 +109,7 @@ function [momp_out, momp_loc, scores] = momp_v4(T, m, verbose, run_mp, plotting)
         prune_time = toc(prune_tic);
         
         pruning = 1 - (length(pruned_T) / n_orig) ;
-
         
-  
         if plotting , generatePlots(T, dd, uamp, ip, camp, lbmp, bsf, pruned_T); end
         
         if write_video , pruning_flow(v, T_orig, pruned_indices); end
@@ -128,6 +130,7 @@ function [momp_out, momp_loc, scores] = momp_v4(T, m, verbose, run_mp, plotting)
         T = pruned_T;
         indices = pruned_indices;
         
+        
         if dd == 1
             [mp, ~, loc, ~] = mpx_v2(T, floor(m/2), m); %for sanity check
             momp_out = min(mp); momp_loc = indices(loc(1:2,1));
@@ -139,10 +142,10 @@ function [momp_out, momp_loc, scores] = momp_v4(T, m, verbose, run_mp, plotting)
             [scores] = score_momp(bsf_vals);
             
             figure;
-            plot(T_orig(momp_loc(1):momp_loc(1)+m), 'b', 'LineWidth', 1);
+            plot(zscore(T_orig(momp_loc(1):momp_loc(1)+m)), 'b', 'LineWidth', 2);
             hold on;
-            plot(T_orig(momp_loc(2):momp_loc(2)+m), 'r', 'LineWidth', 1);
-            title(sprintf('MOMP : T_{%d} and T_{%d}', momp_loc(1), momp_loc(2)),'FontSize',14);
+            plot(zscore(T_orig(momp_loc(2):momp_loc(2)+m)), 'r', 'LineWidth', 1);
+            title(sprintf('MOMP : T_{%d} and T_{%d} (znorm)', momp_loc(1), momp_loc(2)),'FontSize',14);
             box off;
             
             
@@ -168,6 +171,8 @@ function [momp_out, momp_loc, scores] = momp_v4(T, m, verbose, run_mp, plotting)
         end
        
     end
+    
+    
 
 end
 
@@ -189,19 +194,20 @@ function [scores] = score_momp(bsf_vals)
 end
 
 
-function [lbmp, camp] = compLB(T, m, amp, ktip, dd)
+function [lbmp, camp] = compLB(n, m, amp, ktip, dd)
     
-    subsequence_count = length(T)-m +1;
-    ktip_ds = ktip(1:dd:subsequence_count);   
-    camp_ds = (sqrt(dd)*amp) - ktip_ds;
+    subsequence_count = n - m +1;
+    ip = ktip(1:dd:subsequence_count); 
+    n_ip = length(ip);
+    amp = amp(1:n_ip);
+    camp_ds = (sqrt(dd)*amp) - ip;
     camp = repelem(camp_ds, dd);
-    camp = camp(1:length(T)-m+1);
-    lbmp_ds = -inf(size(ktip_ds));
+    camp = camp(1:n-m+1);
+    lbmp_ds = -inf(size(ip)); 
     
-    for ii=1:length(amp)
-        ktip_ds_ii = ones(size(ktip_ds))*ktip_ds(ii);   
-        ktip_ds_ii(ii) = inf;
-        temp_lb = camp_ds - ktip_ds_ii;
+    for ii=1:n_ip
+        temp_lb = camp_ds - ip(ii);
+        temp_lb(ii) = nan;
         lbmp_ds = max(temp_lb, lbmp_ds);
     end
     
@@ -220,6 +226,8 @@ function [lbmp, camp, uamp, absf, absf_loc, uktip, uamp_time, lbmp_time] = upsam
     
     uamp_tic = tic;
     n = length(T);
+    pad = (ceil(n/dd)*dd) - n;
+    T = [T ; randn(pad,1)];
     [Tds, ~] = paa(T, floor(n/dd));
     mds = floor(m/dd);
     [amp, ~, loc, ~] = mpx_v2(Tds, floor(mds/2), mds);
@@ -228,15 +236,15 @@ function [lbmp, camp, uamp, absf, absf_loc, uktip, uamp_time, lbmp_time] = upsam
     
     
     uamp = sqrt(dd) * repelem(amp, dd);
-    uamp = uamp(1:length(T)-m+1);
+    uamp = uamp(1:n-m+1);
     uamp_time = toc(uamp_tic); 
 
     
     uktip = repelem(ktip_ds, dd);
-    uktip = uktip(1:length(T)-m+1);
+    uktip = uktip(1:n-m+1);
 
     lbmp_tic = tic;
-    [lbmp, camp] = compLB(T, m, amp, ktip, dd);
+    [lbmp, camp] = compLB(n, m, amp, ktip, dd);
     
     absf = min(lbmp);
     lbmp_time = toc(lbmp_tic); 
@@ -249,7 +257,7 @@ end
 function [bsf, bsfloc, localbsf] = refine(T, m, bsf, bsfloc, amloc, dd)
 
     ii = amloc(1); jj = amloc(2);
-    [localbsf] = MASS_s2(T(ii:ii+m-1), T(jj:jj+m-1));
+    [localbsf] = MASS_s2(zscore(T(ii:ii+m-1)), zscore(T(jj:jj+m-1)));
     
    
     st1 = max([1, ii - dd + 1]); end1 = ii + m + dd - 1;

@@ -120,7 +120,7 @@ function [momp_out, momp_loc, scores] = momp_v6(T, m, verbose, run_mp, plotting,
         else
             curr_ktip =  full_ktip(1:end, log2(dd));
         end
-        [lbmp, camp, uamp, absf, local_bsf_loc, ip, uamp_time, lbmp_time] = upsample_approximate_mp(T, m, dd, indices, curr_ktip);
+        [lbmp, camp, uamp, absf, local_bsf_loc, ip, uamp_time, lbmp_time] = upsample_approximate_mp(T, m, dd, indices, curr_ktip, plotting);
 
         
         refine_tic = tic;
@@ -230,30 +230,37 @@ function [scores] = score_momp(bsf_vals)
 end
 
 
-function [lbmp, camp] = compLB(n, m, amp, ktip, dd)
+function [lbmp, camp] = compLB(n, m, amp, ktip, dd, plotting)
     
     subsequence_count = n - m +1;
     ip = ktip(1:dd:subsequence_count); 
     n_ip = length(ip);
     amp = amp(1:n_ip);
-    camp_ds = (sqrt(dd)*amp) - ip;
-    camp = repelem(camp_ds, dd);
-    camp = camp(1:n-m+1);
-    lbmp_ds = -inf(size(ip)); 
+%     camp_ds = (sqrt(dd)*amp) - ip;
+    amp = (sqrt(dd)*amp) - ip;
+    if plotting
+        camp = repelem(amp, dd);
+        camp = camp(1:n-m+1);
+    else
+        camp = nan;
+    end
+%     lbmp_ds = -inf(size(ip));
+    lbmp = -inf(size(ip));
     
     for ii=1:n_ip
-        temp_lb = camp_ds - ip(ii);
+%         temp_lb = camp_ds - ip(ii);
+        temp_lb = amp - ip(ii); % mem
         temp_lb(ii) = nan;
-        lbmp_ds = max(temp_lb, lbmp_ds);
+        lbmp = max(temp_lb, lbmp);
     end
     
-    lbmp = repelem(lbmp_ds, dd);
+    lbmp = repelem(lbmp, dd);
     lbmp = lbmp(1:subsequence_count);
         
 end
 
 
-function [lbmp, camp, uamp, absf, absf_loc, uktip, uamp_time, lbmp_time] = upsample_approximate_mp(T, m, dd, indices, ip)
+function [lbmp, camp, uamp, absf, absf_loc, uktip, uamp_time, lbmp_time] = upsample_approximate_mp(T, m, dd, indices, ip, plotting)
     
     %Current assumption : T = k1*dd m = k2*dd 
     mask = indices <= length(ip);
@@ -270,9 +277,12 @@ function [lbmp, camp, uamp, absf, absf_loc, uktip, uamp_time, lbmp_time] = upsam
     absf_loc = (loc(1:2,1) * dd) - dd + 1;
     absf_loc = indices(absf_loc);
     
-    
-    uamp = sqrt(dd) * repelem(amp, dd);
-    uamp = uamp(1:n-m+1);
+    if plotting
+        uamp = sqrt(dd) * repelem(amp, dd);
+        uamp = uamp(1:n-m+1);
+    else
+        uamp = nan;
+    end
     uamp_time = toc(uamp_tic); 
 
     
@@ -280,7 +290,7 @@ function [lbmp, camp, uamp, absf, absf_loc, uktip, uamp_time, lbmp_time] = upsam
     uktip = uktip(1:n-m+1);
 
     lbmp_tic = tic;
-    [lbmp, camp] = compLB(n, m, amp, ktip, dd);
+    [lbmp, camp] = compLB(n, m, amp, ktip, dd, plotting);
     
     absf = min(lbmp);
     lbmp_time = toc(lbmp_tic); 

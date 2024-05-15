@@ -29,7 +29,7 @@ function [momp_out, momp_loc, scores] = momp_v5_AB(T, m, split, verbose, run_mp,
 
 
     if ~exist('verbose', 'var'), verbose = 1; end
-    if ~exist('run_mp', 'var'), run_mp = 1; end
+    if ~exist('run_mp', 'var'), run_mp = 0; end
     if ~exist('plotting', 'var'), plotting = 0; end
     
     % Setting optional flags as needed inside the code
@@ -43,8 +43,7 @@ function [momp_out, momp_loc, scores] = momp_v5_AB(T, m, split, verbose, run_mp,
 
     T_orig = T;
     n_orig = length(T);
-%     if m < 512, dd = (2^floor(log2(m))) / 4; else, dd = (2^floor(log2(m))) / 64; end
-    dd = 128;
+    if m < 512, dd = (2^floor(log2(m))) / 4; else, dd = (2^floor(log2(m))) / 64; end
     
     % Computing initial bsf value by picking random indices from 1:n-m+1 
     [val_1] = randi(split-m+1, 1,1);
@@ -94,7 +93,6 @@ function [momp_out, momp_loc, scores] = momp_v5_AB(T, m, split, verbose, run_mp,
     if verbose, fprintf('====== MOMP ======\n'); end
 
     while true
-           
         [lbmp, camp, uamp, absf, local_bsf_loc, ip, uamp_time, lbmp_time] = upsample_approximate_mp(T, m, split, dd, indices, ktip(1:end, log2(dd)));
 
         refine_tic = tic;
@@ -106,8 +104,6 @@ function [momp_out, momp_loc, scores] = momp_v5_AB(T, m, split, verbose, run_mp,
         prune_time = toc(prune_tic);
 
         pruning = 1 - (length(pruned_T) / n_orig) ;
-
-        
   
         if plotting , generatePlots(T, dd, uamp, ip, camp, lbmp, bsf, pruned_T); end
         
@@ -210,11 +206,6 @@ function [lbmp, camp] = compLB(n, m, amp, ktip, dd, split_ds)
     lbmp_ds = -inf(size(ip)); 
     temp_lb = lbmp_ds;
     
-%     for ii=1:n_ip
-%         temp_lb = camp_ds - ip(ii);
-%         temp_lb(ii) = nan;
-%         lbmp_ds = max(temp_lb, lbmp_ds);
-%     end
     for ii=1:n_ip
         if ii < split_ds
             temp_lb(split_ds:end) = camp_ds(split_ds:end) - ip(ii);
@@ -247,8 +238,9 @@ function [lbmp, camp, uamp, absf, absf_loc, uktip, uamp_time, lbmp_time] = upsam
     T_tail = [T_tail ; randn(pad_tail,1)];
     [Tds_head, ~] = paa(T_head, floor(length(T_head)/dd));
     [Tds_tail, ~] = paa(T_tail, floor(length(T_tail)/dd));
-    
+        
     Tds = [Tds_head; Tds_tail];
+    
     mds = floor(m/dd);
     [amp, ~, loc] = mpx_v2_AB(Tds, mds, length(Tds_head)+1);
     absf_loc = (loc(1:2,1) * dd) - dd + 1;
@@ -275,7 +267,11 @@ end
 function [bsf, bsfloc, localbsf] = refine(T, m, bsf, bsfloc, amloc, dd)
 
     ii = amloc(1); jj = amloc(2);
+    pad_size = nan;
+    if (jj+m-1) > length(T), pad_size = (jj+m-1) - length(T); T = [T ; randn(pad_size,1)]; end
+    
     [localbsf] = MASS_s2(zscore(T(ii:ii+m-1)), zscore(T(jj:jj+m-1)));
+    if ~isnan(pad_size), T = T(1:end-pad_size); end
     
    
     st1 = max([1, ii - dd + 1]); end1 = ii + m + dd - 1;

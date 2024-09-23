@@ -1,6 +1,4 @@
-# iMOMP : interleaved MOMP 
-
-**Use iMOMP for Motif Discovery in a Set of Timeseries**
+# Matrix Profile XXXI: Motif-Only Matrix Profile: Orders of Magnitude Faster
 
 ## Table of Contents
 1. [Installation](#installation)

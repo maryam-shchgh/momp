@@ -10,7 +10,11 @@
 
 1. **Clone the repository:**
    git clone https://github.com/maryam-shchgh/momp.git
+
+2. **Run Usage:**
    Following the provided usage, you can easily study your set of timeseries.
    Current version of iMOMP is in MATLAB.
 
+## usage
+1. 
 

@@ -18,11 +18,11 @@
    [momp_out, momp_loc] = momp_v9(T, m, verbose, run_mp, plotting);
    
 3. **Parameters:**
-   T: Timeseries
-   m: Motif length.
-   verbose (optional): Set to 1 to enable terminal logging (default = 1).
-   run_mp (optional): Set to 1 to run Mpx on all timeseries (default = 0).
-   plotting (optional): To plot the final results
+   - T: Timeseries
+   - m: Motif length.
+   - verbose (optional): Set to 1 to enable terminal logging (default = 1).
+   - run_mp (optional): Set to 1 to run Mpx on all timeseries (default = 0).
+   - plotting (optional): To plot the final results
 
 ## Related Paper(s)
 This code is associated with the paper titled:

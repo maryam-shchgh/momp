@@ -20,7 +20,6 @@ if ~exist('minlag', 'var')
 end
 
 
-
 n = length(timeSeries);
 transposed_ = isrow(timeSeries);
 if transposed_

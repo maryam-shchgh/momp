@@ -39,6 +39,7 @@ Approximately repeated subsequences in a longer timeseries, i.e.,time series mot
 ### Key Contributions
 - Introduction of the lbMP lower bound for the Matrix Profile.
 - Development of the MOMP algorithm for exact motif discovery by up to two orders of magnitude faster.
+- The full idea and the experimental results along with the code is also available at: [https://sites.google.com/view/momp2024/home]
 
 ### Citation
 If you use this work in your research, please cite it as follows: [The link will be inserted soon]

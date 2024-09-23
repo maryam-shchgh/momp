@@ -16,5 +16,9 @@
    Current version of iMOMP is in MATLAB.
 
 ## usage
-1. 
-
+1. [momp_out, momp_loc] = mist_v02(Ts_set, m, verbose, run_mpx);
+2. **Parameters:**
+   Ts_set: Timeseries set, with each Ts organized in a separate column.
+   m: Motif length.
+   verbose (optional): Set to 1 to enable terminal logging (default = 1).
+   run_mpx (optional): Set to 1 to run Mpx on all timeseries (default = 0).

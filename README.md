@@ -11,8 +11,10 @@
 
 1. **Clone the repository:**
    git clone https://github.com/maryam-shchgh/momp.git
+   git checkout -b imomp
+   git branch -a 
 
-2. **Run Usage:**
+3. **Run Usage:**
    Following the provided usage, you can easily study your set of timeseries.
    Current version of iMOMP is in MATLAB.
 
@@ -20,10 +22,10 @@
 1. **Usage:**
    [momp_out, momp_loc] = mist_v02(Ts_set, m, verbose, run_mpx);
 3. **Parameters:**
-   Ts_set: Timeseries set, with each Ts organized in a separate column.
-   m: Motif length.
-   verbose (optional): Set to 1 to enable terminal logging (default = 1).
-   run_mpx (optional): Set to 1 to run Mpx on all timeseries (default = 0).
+   - Ts_set: Timeseries set, with each Ts organized in a separate column.
+   - m: Motif length.
+   - verbose (optional): Set to 1 to enable terminal logging (default = 1).
+   - run_mpx (optional): Set to 1 to run Mpx on all timeseries (default = 0).
 
 ## Related Paper(s)
 This code is associated with the paper titled:
